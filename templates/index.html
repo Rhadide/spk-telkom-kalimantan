@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPK Dashboard | Telkom Regional IV Kalimantan</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="/static/logotelkom.png" alt="Telkom">
+            <div class="brand-text">
+                <span class="brand-sub">Regional IV</span>
+                <span class="brand-main">KALIMANTAN</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">MENU UTAMA</div>
+            <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <span>Dashboard Analytics</span>
+            </button>
+            <button class="nav-item" id="nav-revenue" onclick="switchTab('revenue')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Executive Revenue</span>
+            </button>
+            <button class="nav-item" id="nav-kriteria" onclick="switchTab('kriteria')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                <span>Pengaturan Kriteria</span>
+            </button>
+            <button class="nav-item" id="nav-datamaster" onclick="switchTab('datamaster')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                <span>Data Master Pelanggan</span>
+            </button>
+            <button class="nav-item nav-item-cta" id="nav-tambah" onclick="switchTab('tambah')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <span>Tambah Pelanggan</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="status-dot online"></div>
+            <span>System Online</span>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-breadcrumb">
+                <span id="breadcrumbText">Dashboard / Analytics</span>
+            </div>
+            <div class="topbar-right">
+                <div class="user-badge">
+                    <div class="user-avatar">AD</div>
+                    <span>Admin Dashboard</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-scroll">
+
+            <!-- ====== TAB: DASHBOARD ====== -->
+            <div id="tab-dashboard" class="tab-pane active">
+                <div class="page-title">
+                    <h2>Dashboard Analytics</h2>
+                    <p>Perankingan pelanggan menggunakan metode AHP &amp; SAW.</p>
+                </div>
+
+                <div class="kpi-row">
+                    <div class="kpi-card">
+                        <div class="kpi-icon blue">👥</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Total Pelanggan</span>
+                            <strong id="statTotalCust">—</strong>
+                            <span class="kpi-sub">Aktif dalam sistem</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon purple">🧮</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Model SPK</span>
+                            <strong>AHP-SAW</strong>
+                            <span class="kpi-sub">4 Kriteria aktif</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon" id="statConsIcon">✅</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Konsistensi AHP</span>
+                            <strong id="statConsistency">—</strong>
+                            <span class="kpi-sub" id="statCRValue">CR: —</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="two-col-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🏆 Top 100 Prioritas Pelanggan</h3>
+                            <button class="btn-ghost" onclick="calculateAll()">⟳ Refresh</button>
+                        </div>
+                        <div class="table-scroll">
+                            <table class="data-table" id="rankingTable">
+                                <thead>
+                                    <tr><th>#</th><th>Nama Pelanggan</th><th>Score SAW</th><th>Status</th></tr>
+                                </thead>
+                                <tbody id="rankingTableBody">
+                                    <tr><td colspan="4" class="empty-row">Tekan Refresh untuk menjalankan analisis.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3>📊 Bobot Kriteria AHP</h3></div>
+                        <div id="weightBars" class="weight-bars"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== TAB: EXECUTIVE REVENUE ====== -->
+            <div id="tab-revenue" class="tab-pane">
+                <div class="page-title">
+                    <h2>Executive Revenue Dashboard</h2>
+                    <p>Analisis performa pendapatan Telkom Regional IV Kalimantan.</p>
+                </div>
+
+                <!-- Hero KPI -->
+                <div class="kpi-row">
+                    <div class="kpi-card kpi-hero">
+                        <div class="kpi-icon gold">💰</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Total Revenue</span>
+                            <strong class="kpi-hero-val">Rp 81.441.695.977</strong>
+                            <span class="kpi-sub">Seluruh Regional IV Kalimantan</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-hero">
+                        <div class="kpi-icon red">🏅</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Top Performer</span>
+                            <strong class="kpi-hero-val small-text">PT. PERTAMINA HULU SANGA SANGA</strong>
+                            <span class="kpi-sub gold-text">Rp 11.064.834.875</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon teal">📍</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Cakupan Area</span>
+                            <strong>Regional IV</strong>
+                            <span class="kpi-sub">Kalimantan Overview</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Witel + Characteristic Row -->
+                <div class="two-col-grid">
+                    <div class="card">
+                        <div class="card-header"><h3>Revenue by Witel</h3></div>
+                        <div class="chart-wrap"><canvas id="witelChart"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3>Revenue by Characteristic</h3></div>
+                        <div class="chart-wrap"><canvas id="charChart"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Monthly Trend -->
+                <div class="card mt-2">
+                    <div class="card-header">
+                        <h3>📅 Tren Revenue Bulanan (Jan – Des)</h3>
+                        <div class="filter-tabs">
+                            <button class="ftab active" onclick="filterMonthly('all', this)">All Revenue</button>
+                            <button class="ftab" onclick="filterMonthly('scaling', this)">Scaling</button>
+                            <button class="ftab" onclick="filterMonthly('sustain', this)">Sustain</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrap tall"><canvas id="monthlyChart"></canvas></div>
+                </div>
+
+                <!-- Top 5 with filter -->
+                <div class="card mt-2">
+                    <div class="card-header">
+                        <h3>🏆 Top 5 Pelanggan</h3>
+                        <div class="filter-tabs">
+                            <button class="ftab active" onclick="filterTop5('revenue', this)">Revenue</button>
+                            <button class="ftab" onclick="filterTop5('produk', this)">Produk</button>
+                            <button class="ftab" onclick="filterTop5('karakteristik', this)">Karakteristik</button>
+                            <button class="ftab" onclick="filterTop5('durasi', this)">Durasi</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrap"><canvas id="topCustChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ====== TAB: KRITERIA AHP ====== -->
+            <div id="tab-kriteria" class="tab-pane">
+                <div class="page-title">
+                    <h2>Pengaturan Kriteria — Matriks AHP</h2>
+                    <p>Input perbandingan berpasangan antar kriteria (skala 1–9).</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Matriks Perbandingan Berpasangan</h3>
+                            <small class="muted">1 = Sama penting, 9 = Mutlak lebih penting</small>
+                        </div>
+                        <div id="crBadge" class="status-badge neutral">Belum Dihitung</div>
+                    </div>
+                    <!-- Toolbar kriteria -->
+                    <div class="criteria-toolbar">
+                        <span class="muted" style="font-size:.85rem">Kriteria aktif: <strong id="criteriaCountLabel">4</strong></span>
+                        <div style="display:flex;gap:.5rem">
+                            <button class="btn-outline" id="btnRemoveCriteria" onclick="removeCriteria()" title="Hapus kriteria terakhir">− Hapus Kriteria</button>
+                            <button class="btn-outline" onclick="addCriteria()" title="Tambah kriteria baru">+ Tambah Kriteria</button>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="ahp-matrix-table" id="matrixInputTable">
+                            <thead id="matrixThead"></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn-primary" onclick="executeAnalysis(true)">🚀 Kalkulasi &amp; Update Dashboard</button>
+                    </div>
+                </div>
+
+                <!-- Full AHP Result Tables (hidden until calc) -->
+                <div id="ahpResultSection" style="display:none;">
+                    <!-- Normalization Table -->
+                    <div class="card mt-2">
+                        <div class="card-header"><h3>Matriks Normalisasi &amp; Bobot Akhir</h3></div>
+                        <div class="table-scroll">
+                            <table class="data-table" id="normTable">
+                                <thead>
+                                    <tr>
+                                        <th>Kriteria</th><th>C1</th><th>C2</th><th>C3</th><th>C4</th>
+                                        <th class="col-w">Bobot (W)</th>
+                                        <th class="col-eigen">Nilai Eigen (λ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="normTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Column Sums -->
+                    <div class="card mt-2">
+                        <div class="card-header"><h3>Jumlah Kolom Matriks</h3></div>
+                        <div class="table-scroll">
+                            <table class="data-table" id="colSumTable">
+                                <thead>
+                                    <tr><th>—</th><th>C1 (Produk)</th><th>C2 (Sustain)</th><th>C3 (Durasi)</th><th>C4 (Revenue)</th></tr>
+                                </thead>
+                                <tbody id="colSumTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Consistency Metrics -->
+                    <div class="card mt-2">
+                        <div class="card-header"><h3>Uji Konsistensi AHP</h3></div>
+                        <div class="consistency-grid">
+                            <div class="cons-item">
+                                <span>Lambda Max (λ max)</span>
+                                <strong id="cLambdaMax">—</strong>
+                            </div>
+                            <div class="cons-item">
+                                <span>Jumlah Kriteria (n)</span>
+                                <strong id="cN">4</strong>
+                            </div>
+                            <div class="cons-item">
+                                <span>Consistency Index (CI)</span>
+                                <strong id="cCI">—</strong>
+                            </div>
+                            <div class="cons-item">
+                                <span>Random Index (RI)</span>
+                                <strong id="cRI">0.90</strong>
+                            </div>
+                            <div class="cons-item">
+                                <span>Consistency Ratio (CR)</span>
+                                <strong id="cCR">—</strong>
+                            </div>
+                            <div class="cons-item cons-verdict" id="consVerdictCard">
+                                <span>Kesimpulan</span>
+                                <strong id="cVerdict">—</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== TAB: DATA MASTER ====== -->
+            <div id="tab-datamaster" class="tab-pane">
+                <div class="page-title">
+                    <h2>Data Master Pelanggan</h2>
+                    <p>Tampilan data mentah Excel (Raw) dan data teragregasi untuk SPK (Edited).</p>
+                </div>
+
+                <div class="master-toolbar card">
+                    <!-- Toggle: Raw / Edited -->
+                    <div class="view-toggle">
+                        <button class="vtab active" id="vtab-edited" onclick="switchMasterView('edited')">Edited (Agregat SPK)</button>
+                        <button class="vtab" id="vtab-raw" onclick="switchMasterView('raw')">Raw (Data Excel Asli)</button>
+                    </div>
+                    <!-- Search -->
+                    <div class="search-wrap">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="masterSearch" placeholder="Cari nama pelanggan..." oninput="onSearchMaster()">
+                    </div>
+                    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                        <button class="btn-outline" onclick="downloadTemplate()" title="Unduh file template Excel">📥 Download Template</button>
+                        <label class="btn-outline" style="cursor:pointer;margin:0" title="Import dari file Excel">
+                            📤 Import Excel
+                            <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this)">
+                        </label>
+                        <button class="btn-primary" onclick="switchTab('tambah')">+ Tambah Pelanggan</button>
+                    </div>
+                </div>
+
+                <!-- Edited Table -->
+                <div id="editedView" class="card mt-1">
+                    <div class="table-scroll tall-table">
+                        <table class="data-table" id="masterTable">
+                            <thead>
+                                <tr>
+                                    <th>No</th><th>Nama Pelanggan</th>
+                                    <th>C1 (Produk)</th><th>C2 (Karakteristik)</th>
+                                    <th>C3 (Durasi)</th><th>C4 (Revenue)</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="masterTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="editedPagination" class="pagination-bar"></div>
+                </div>
+
+                <!-- Raw Table -->
+                <div id="rawView" class="card mt-1" style="display:none;">
+                    <div class="table-scroll tall-table" id="rawTableWrap">
+                        <table class="data-table" id="rawTable">
+                            <thead id="rawTableHead"><tr><td class="empty-row">Memuat data...</td></tr></thead>
+                            <tbody id="rawTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="rawPagination" class="pagination-bar"></div>
+                </div>
+            </div>
+
+            <!-- ====== TAB: TAMBAH PELANGGAN ====== -->
+            <div id="tab-tambah" class="tab-pane">
+                <div class="page-title">
+                    <h2>Tambah Pelanggan Baru</h2>
+                    <p>Isi form berikut. Durasi kontrak dihitung otomatis dari rentang kalender.</p>
+                </div>
+
+                <div class="card form-card">
+                    <form id="addForm" onsubmit="submitAddForm(event)">
+
+                        <div class="form-section">
+                            <div class="form-section-title">📋 Identitas Pelanggan</div>
+                            <div class="form-group">
+                                <label>Nama Pelanggan / Instansi *</label>
+                                <input type="text" id="addCustName" placeholder="Contoh: PT. Sumber Makmur Tbk" required class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label>C1 — Jumlah Produk (Unique GROUP4) *</label>
+                                <input type="number" id="addC1" min="1" value="1" required class="form-input">
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title">💰 Data Revenue Pelanggan</div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label>Revenue Scaling (Rp)</label>
+                                    <input type="number" id="addRevScaling" min="0" value="0" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>Revenue Sustain (Rp)</label>
+                                    <input type="number" id="addRevSustain" min="0" value="0" class="form-input">
+                                </div>
+                            </div>
+                            <div class="revenue-preview">
+                                <span>Total Revenue:</span>
+                                <strong id="addRevenuePreview">Rp 0</strong>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title">📅 Durasi Kontrak (Kalender)</div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label>Bulan Mulai</label>
+                                    <input type="month" id="addMonthStart" class="form-input" oninput="recalcDuration('add')">
+                                </div>
+                                <div class="form-group">
+                                    <label>Bulan Selesai</label>
+                                    <input type="month" id="addMonthEnd" class="form-input" oninput="recalcDuration('add')">
+                                </div>
+                            </div>
+                            <div class="duration-badge" id="addDurationBadge">
+                                Durasi: — bulan
+                            </div>
+                            <p class="form-hint">Atau isi manual:</p>
+                            <div class="form-group">
+                                <label>C3 — Durasi (Bulan) *</label>
+                                <input type="number" id="addC3" min="1" value="1" required class="form-input">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="reset" class="btn-outline" onclick="resetAddForm()">Reset Form</button>
+                            <button type="submit" class="btn-primary">💾 Simpan ke Data Master</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div><!-- end page-scroll -->
+    </main>
+</div><!-- end app-layout -->
+
+<!-- ====== MODAL: EDIT PELANGGAN ====== -->
+<div id="editModal" class="modal-bg" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Edit Data Pelanggan</h3>
+            <button class="close-btn" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="editForm" onsubmit="submitEditForm(event)">
+            <input type="hidden" id="editOrigName">
+            <div class="form-group">
+                <label>Nama Pelanggan</label>
+                <input type="text" id="editCustName" class="form-input" disabled>
+            </div>
+            <div class="form-group">
+                <label>C1 — Jumlah Produk</label>
+                <input type="number" id="editC1" min="1" class="form-input" required>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Revenue Scaling (Rp)</label>
+                    <input type="number" id="editRevScaling" min="0" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Revenue Sustain (Rp)</label>
+                    <input type="number" id="editRevSustain" min="0" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Bulan Mulai</label>
+                    <input type="month" id="editMonthStart" class="form-input" oninput="recalcDuration('edit')">
+                </div>
+                <div class="form-group">
+                    <label>Bulan Selesai</label>
+                    <input type="month" id="editMonthEnd" class="form-input" oninput="recalcDuration('edit')">
+                </div>
+            </div>
+            <div class="duration-badge" id="editDurationBadge">Durasi: — bulan</div>
+            <div class="form-group">
+                <label>C3 — Durasi (Bulan)</label>
+                <input type="number" id="editC3" min="1" class="form-input" required>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-outline" onclick="closeEditModal()">Batal</button>
+                <button type="submit" class="btn-primary">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ====== TOAST NOTIFICATION ====== -->
+<div id="toast" class="toast"></div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
