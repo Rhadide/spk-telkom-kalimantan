@@ -3,26 +3,15 @@ let CRITERIA = ['C1 (Produk)', 'C2 (Karakteristik)', 'C3 (Durasi)', 'C4 (Revenue
 const DEFAULT_MATRIX_4 = [[1,2,3,0.33],[0.5,1,2,0.25],[0.33,0.5,1,0.2],[3,4,5,1]];
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
-// ===== MODERN CHART PALETTE (Red/Pink family) =====
-const PALETTE_RED = [
-    '#EE1C25','#F44336','#E57373','#FF8A80',
-    '#FFCDD2','#FF5252','#D32F2F','#C62828'
-];
-const PALETTE_BLUE = [
-    '#1565C0','#1976D2','#2196F3','#42A5F5',
-    '#90CAF9','#BBDEFB','#0D47A1','#1E88E5'
-];
-// Harmonious red-rose gradient stops for use in charts
+// Dark theme chart defaults
+const DARK_TOOLTIP_BG = '#1a1d27';
+const DARK_GRID = 'rgba(255,255,255,0.05)';
+const DARK_TICK = '#475569';
 const CHART_COLORS = {
-    primary:   '#EE1C25',
-    secondary: '#FF6B6B',
-    tertiary:  '#FF8E8E',
-    light1:    '#FFA8A8',
-    light2:    '#FFCDD2',
-    light3:    '#FFE0E0',
-    accent:    '#FF4757',
-    dark:      '#C62828'
+    primary: '#e63030', accent: '#ff4757', light1: '#ff8e8e',
+    light2: '#ffb3b3', light3: '#ffd0d0', dark: '#b91c1c'
 };
+const WITEL_COLORS = ['#e63030','#ff4757','#ff6b6b','#ff8e8e','#ffa8a8','#ffbdbd','#ffd0d0','#ffe3e3'];
 
 // Build gradient fill on a canvas context
 function makeGradient(ctx, color, alpha1 = 0.5, alpha2 = 0.0) {
@@ -233,7 +222,7 @@ function renderAHPResults(ahp) {
     document.getElementById('cCR').textContent = `${crPct}%`;
     const verdict = document.getElementById('cVerdict');
     const vCard = document.getElementById('consVerdictCard');
-    verdict.textContent = ahp.is_consistent ? '✅ KONSISTEN & VALID' : '❌ TIDAK KONSISTEN';
+    verdict.textContent = ahp.is_consistent ? 'KONSISTEN & VALID' : 'TIDAK KONSISTEN';
     vCard.className = 'cons-item cons-verdict ' + (ahp.is_consistent ? 'ok' : '');
 
     // CR Status Card on Dashboard
@@ -291,14 +280,24 @@ function calculateAll() { loadDashboard(); }
 // ===== REVENUE CHARTS =====
 let statsCache = null;
 
-async function loadRevenueStats() {
-    if (!statsCache) {
+async function loadRevenueStats(forceRefresh = false) {
+    if (!statsCache || forceRefresh) {
         try {
             const res = await fetch('/api/stats');
             statsCache = await res.json();
         } catch (e) { console.warn('Stats load failed'); return; }
     }
     renderRevenueCharts(statsCache);
+    // Populate hero KPIs
+    if (statsCache) {
+        const total = statsCache.total_revenue || 0;
+        document.getElementById('revTotalRevenue').textContent = fmtCurrency(total);
+        const topList = statsCache.top_customers_revenue || [];
+        if (topList.length > 0) {
+            document.getElementById('revTopName').textContent = topList[0].CUST_NAME;
+            document.getElementById('revTopRev').textContent = fmtCurrency(topList[0].C4_Revenue);
+        }
+    }
 }
 
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
@@ -308,85 +307,38 @@ function renderRevenueCharts(stats) {
     destroyChart('witel');
     const witelKeys = Object.keys(stats.witel_revenue || {}).slice(0, 8);
     const witelVals = witelKeys.map(k => stats.witel_revenue[k]);
-    const witelColors = [
-        '#EE1C25','#FF4757','#FF6B6B','#FF8E8E',
-        '#FFA8A8','#FFBDBD','#FFD0D0','#FFE3E3'
-    ];
     charts.witel = new Chart(document.getElementById('witelChart'), {
         type: 'doughnut',
         data: {
             labels: witelKeys,
             datasets: [{
                 data: witelVals,
-                backgroundColor: witelColors.slice(0, witelKeys.length),
-                borderWidth: 3,
-                borderColor: '#fff',
-                hoverBorderWidth: 4,
-                hoverOffset: 8
+                backgroundColor: WITEL_COLORS.slice(0, witelKeys.length),
+                borderWidth: 2, borderColor: '#0f1117',
+                hoverBorderWidth: 3, hoverOffset: 6
             }]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
-            cutout: '62%',
+            responsive: true, maintainAspectRatio: false, cutout: '62%',
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        font: { size: 11, family: 'Plus Jakarta Sans', weight: '600' },
-                        usePointStyle: true, pointStyleWidth: 10,
-                        padding: 14, color: '#475569'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    titleFont: { size: 12, weight: 'bold' },
-                    bodyFont: { size: 11 },
-                    padding: 12,
-                    callbacks: {
-                        label: ctx => ` ${ctx.label}: Rp ${(ctx.raw/1e9).toFixed(2)}B`
-                    }
-                }
+                legend: { position: 'bottom', labels: { font: { size: 10, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, pointStyleWidth: 8, padding: 10, color: DARK_TICK } },
+                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { size: 12, weight: 'bold' }, bodyFont: { size: 11 }, padding: 12,
+                    callbacks: { label: ctx => ` ${ctx.label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
             }
         }
     });
 
-    // Characteristic Pie — red/pink family
     destroyChart('char');
     const charKeys = Object.keys(stats.char_revenue || {});
     const charVals = charKeys.map(k => stats.char_revenue[k]);
-    const charColors = ['#EE1C25','#FF8E8E','#FF4757','#FFBDBD'];
     charts.char = new Chart(document.getElementById('charChart'), {
         type: 'doughnut',
-        data: {
-            labels: charKeys,
-            datasets: [{
-                data: charVals,
-                backgroundColor: charColors.slice(0, charKeys.length),
-                borderWidth: 3,
-                borderColor: '#fff',
-                hoverBorderWidth: 4,
-                hoverOffset: 8
-            }]
-        },
+        data: { labels: charKeys, datasets: [{ data: charVals, backgroundColor: ['#e63030','#ff8e8e','#ff4757','#ffbdbd'].slice(0, charKeys.length), borderWidth: 2, borderColor: '#0f1117', hoverOffset: 6 }] },
         options: {
-            responsive: true, maintainAspectRatio: false,
-            cutout: '55%',
+            responsive: true, maintainAspectRatio: false, cutout: '55%',
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        font: { size: 11, family: 'Plus Jakarta Sans', weight: '600' },
-                        usePointStyle: true, pointStyleWidth: 10,
-                        padding: 14, color: '#475569'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    padding: 12,
-                    callbacks: {
-                        label: ctx => ` ${ctx.label}: Rp ${(ctx.raw/1e9).toFixed(2)}B`
-                    }
-                }
+                legend: { position: 'bottom', labels: { font: { size: 10, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, pointStyleWidth: 8, padding: 10, color: DARK_TICK } },
+                tooltip: { backgroundColor: DARK_TOOLTIP_BG, padding: 12, callbacks: { label: ctx => ` ${ctx.label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
             }
         }
     });
@@ -405,67 +357,28 @@ function renderMonthlyChart(stats, mode) {
     const vals = MONTH_LABELS.map(m => (dataMap || {})[m] || 0);
     // Harmonious red/pink palette per mode
     const colorMap = {
-        all:     { border: '#EE1C25', point: '#C62828', bg: '#EE1C2520' },
-        scaling: { border: '#FF4757', point: '#D32F2F', bg: '#FF475720' },
-        sustain: { border: '#FF8E8E', point: '#E57373', bg: '#FF8E8E20' }
+        all:     { border: '#e63030', bg: 'rgba(230,48,48,0.18)' },
+        scaling: { border: '#ff4757', bg: 'rgba(255,71,87,0.15)' },
+        sustain: { border: '#ff8e8e', bg: 'rgba(255,142,142,0.12)' }
     };
     const c = colorMap[mode] || colorMap.all;
     const label = mode === 'all' ? 'All Revenue' : mode === 'scaling' ? 'Revenue Scaling' : 'Revenue Sustain';
-
     const ctx = document.getElementById('monthlyChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 350);
-    gradient.addColorStop(0, c.border + '50');
-    gradient.addColorStop(1, c.border + '05');
-
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, c.bg); gradient.addColorStop(1, 'rgba(0,0,0,0)');
     charts.monthly = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels: MONTH_LABELS,
-            datasets: [{
-                label,
-                data: vals,
-                borderColor: c.border,
-                backgroundColor: gradient,
-                fill: true,
-                tension: 0.45,
-                pointRadius: 6,
-                pointHoverRadius: 9,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: c.border,
-                pointBorderWidth: 2.5,
-                borderWidth: 2.5
-            }]
-        },
+        data: { labels: MONTH_LABELS, datasets: [{ label, data: vals, borderColor: c.border, backgroundColor: gradient, fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: c.border, pointBorderColor: '#0f1117', pointBorderWidth: 2, borderWidth: 2 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    titleFont: { size: 13, weight: 'bold' },
-                    bodyFont: { size: 12 },
-                    padding: 14,
-                    callbacks: {
-                        label: ctx => ` ${label}: Rp ${(ctx.raw/1e9).toFixed(2)} Miliar`
-                    }
-                }
+                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { size: 12, weight: 'bold' }, bodyFont: { size: 11 }, padding: 12, callbacks: { label: ctx => ` ${label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
             },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#f1f5f9', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 }, color: '#94a3b8',
-                        callback: v => 'Rp ' + (v/1e9).toFixed(1) + 'B'
-                    },
-                    border: { display: false }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { size: 11 }, color: '#94a3b8' },
-                    border: { display: false }
-                }
+                y: { beginAtZero: true, grid: { color: DARK_GRID }, ticks: { font: { size: 10 }, color: DARK_TICK, callback: v => 'Rp ' + (v/1e9).toFixed(1) + 'B' }, border: { display: false } },
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: DARK_TICK }, border: { display: false } }
             }
         }
     });
@@ -483,64 +396,20 @@ function renderTop5Chart(stats, mode) {
         mode === 'karakteristik' ? c.C2_Karakteristik :
         mode === 'durasi' ? c.C3_Durasi : c.C4_Revenue);
 
-    // Harmonious red/pink gradient per bar
-    const barColors = [
-        '#EE1C25', '#FF4757', '#FF6B6B', '#FF8E8E', '#FFA8A8'
-    ];
-    const borderColors = [
-        '#C62828', '#D32F2F', '#E57373', '#EF9A9A', '#FFCDD2'
-    ];
-
     charts.top5 = new Chart(document.getElementById('topCustChart'), {
         type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                data: vals,
-                backgroundColor: barColors.slice(0, vals.length),
-                borderColor: borderColors.slice(0, vals.length),
-                borderWidth: 0,
-                borderRadius: { topRight: 8, bottomRight: 8 },
-                borderSkipped: false
-            }]
-        },
+        data: { labels, datasets: [{ data: vals, backgroundColor: ['#e63030','#ff4757','#ff6b6b','#ff8e8e','#ffa8a8'].slice(0, vals.length), borderWidth: 0, borderRadius: 6, borderSkipped: false }] },
         options: {
-            indexAxis: 'y',
-            responsive: true, maintainAspectRatio: false,
-            interaction: { intersect: false, mode: 'index' },
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    titleFont: { size: 12, weight: 'bold' },
-                    bodyFont: { size: 11 },
-                    padding: 12,
-                    callbacks: {
-                        label: ctx => {
-                            const v = ctx.raw;
-                            if (mode === 'revenue') return ` Revenue: Rp ${(v/1e9).toFixed(2)} Miliar`;
-                            if (mode === 'produk') return ` Jumlah Produk: ${v}`;
-                            if (mode === 'durasi') return ` Durasi: ${v} bulan`;
-                            return ` Karakteristik: ${Number(v).toFixed(4)}`;
-                        }
-                    }
+                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { size: 11, weight: 'bold' }, bodyFont: { size: 10 }, padding: 10,
+                    callbacks: { label: ctx => { const v = ctx.raw; return mode === 'revenue' ? ` Rp ${(v/1e9).toFixed(2)}B` : mode === 'produk' ? ` ${v} produk` : mode === 'durasi' ? ` ${v} bulan` : ` ${Number(v).toFixed(4)}`; } }
                 }
             },
             scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: '#f8fafc', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 }, color: '#94a3b8',
-                        callback: v => mode === 'revenue' ? 'Rp ' + (v/1e9).toFixed(1) + 'B' : v
-                    },
-                    border: { display: false }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { font: { size: 11, weight: '600' }, color: '#475569' },
-                    border: { display: false }
-                }
+                x: { beginAtZero: true, grid: { color: DARK_GRID }, ticks: { font: { size: 9 }, color: DARK_TICK, callback: v => mode === 'revenue' ? (v/1e9).toFixed(1)+'B' : v }, border: { display: false } },
+                y: { grid: { display: false }, ticks: { font: { size: 9, weight: '600' }, color: DARK_TICK }, border: { display: false } }
             }
         }
     });
@@ -597,10 +466,14 @@ async function loadMasterEdited() {
                 <td>${Number(row.C2_Karakteristik).toFixed(4)}</td>
                 <td>${row.C3_Durasi} bln</td>
                 <td style="font-weight:700;color:var(--red)">${fmtCurrency(row.C4_Revenue)}</td>
-                <td>
-                    <button class="btn-action btn-edit" onclick='openEditModal(${JSON.stringify(row)})'>✏️ Edit</button>
-                    <button class="btn-action btn-delete" onclick="deleteCust('${row.CUST_NAME.replace(/'/g,"\\'")}')">🗑️</button>
-                </td>`;
+                 <td style="display:flex;gap:.4rem">
+                     <button class="btn-icon" onclick='openEditModal(${JSON.stringify(row)})' title="Edit">
+                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                     </button>
+                     <button class="btn-icon danger" onclick="deleteCust('${row.CUST_NAME.replace(/'/g,"\\'")}')" title="Hapus">
+                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                     </button>
+                 </td>`;
             tbody.appendChild(tr);
         });
     }
@@ -737,10 +610,12 @@ async function submitAddForm(e) {
         body: JSON.stringify(payload)
     });
     if (res.ok) {
-        showToast(`Pelanggan "${payload.CUST_NAME}" berhasil ditambahkan!`, 'success');
+        showToast(`Pelanggan "${payload.CUST_NAME}" berhasil ditambahkan.`, 'success');
         resetAddForm();
-        switchTab('datamaster');
+        // Live update: refresh dashboard & data master tanpa pindah tab
+        await loadDashboard();
         loadMasterEdited();
+        switchTab('datamaster');
     } else {
         const err = await res.json();
         showToast('Gagal: ' + err.detail, 'error');
@@ -776,8 +651,10 @@ async function importExcel(input) {
         const data = await res.json();
         if (res.ok) {
             showToast(data.message, 'success');
+            // Live update: refresh dashboard, data master, dan stats revenue
+            await loadDashboard();
             loadMasterEdited();
-            loadDashboard();
+            statsCache = null; // force reload stats berikutnya
         } else {
             showToast('Gagal: ' + (data.detail || 'Error tidak diketahui'), 'error');
         }
