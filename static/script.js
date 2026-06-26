@@ -302,31 +302,33 @@ async function loadRevenueStats(forceRefresh = false) {
 
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
+const centerTextPlugin = {
+    id: 'centerText',
+    beforeDraw(chart) {
+        const { width, height, ctx } = chart;
+        ctx.restore();
+        ctx.font = "bold 13px 'Plus Jakarta Sans'";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff";
+        const totalVal = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+        const text = "Rp " + (totalVal/1e9).toFixed(1) + "B";
+        const textX = Math.round((width - ctx.measureText(text).width) / 2);
+        const textY = (height / 2) - 8;
+        ctx.fillText(text, textX, textY);
+
+        ctx.font = "600 9px 'Plus Jakarta Sans'";
+        ctx.fillStyle = "#64748b";
+        const subtext = "TOTAL";
+        const subtextX = Math.round((width - ctx.measureText(subtext).width) / 2);
+        const subtextY = (height / 2) + 10;
+        ctx.fillText(subtext, subtextX, subtextY);
+        ctx.save();
+    }
+};
+
 function renderRevenueCharts(stats) {
-    // Witel Doughnut — red/pink family
-    destroyChart('witel');
-    const witelKeys = Object.keys(stats.witel_revenue || {}).slice(0, 8);
-    const witelVals = witelKeys.map(k => stats.witel_revenue[k]);
-    charts.witel = new Chart(document.getElementById('witelChart'), {
-        type: 'doughnut',
-        data: {
-            labels: witelKeys,
-            datasets: [{
-                data: witelVals,
-                backgroundColor: WITEL_COLORS.slice(0, witelKeys.length),
-                borderWidth: 2, borderColor: '#0f1117',
-                hoverBorderWidth: 3, hoverOffset: 6
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, cutout: '62%',
-            plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 10, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, pointStyleWidth: 8, padding: 10, color: DARK_TICK } },
-                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { size: 12, weight: 'bold' }, bodyFont: { size: 11 }, padding: 12,
-                    callbacks: { label: ctx => ` ${ctx.label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
-            }
-        }
-    });
+    // Initialize Kalimantan interactive map instead of Witel doughnut
+    initKalimantanMap(stats);
 
     destroyChart('char');
     const charKeys = Object.keys(stats.char_revenue || {});
@@ -334,10 +336,11 @@ function renderRevenueCharts(stats) {
     charts.char = new Chart(document.getElementById('charChart'), {
         type: 'doughnut',
         data: { labels: charKeys, datasets: [{ data: charVals, backgroundColor: ['#e63030','#ff8e8e','#ff4757','#ffbdbd'].slice(0, charKeys.length), borderWidth: 2, borderColor: '#0f1117', hoverOffset: 6 }] },
+        plugins: [centerTextPlugin],
         options: {
-            responsive: true, maintainAspectRatio: false, cutout: '55%',
+            responsive: true, maintainAspectRatio: false, cutout: '72%',
             plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 10, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, pointStyleWidth: 8, padding: 10, color: DARK_TICK } },
+                legend: { position: 'bottom', labels: { font: { size: 9, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, pointStyleWidth: 7, padding: 8, color: DARK_TICK } },
                 tooltip: { backgroundColor: DARK_TOOLTIP_BG, padding: 12, callbacks: { label: ctx => ` ${ctx.label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
             }
         }
@@ -350,35 +353,69 @@ function renderRevenueCharts(stats) {
     renderTop5Chart(stats, 'revenue');
 }
 
+function initKalimantanMap(stats) {
+    const tooltip = document.getElementById('mapTooltip');
+    const regions = document.querySelectorAll('.map-region');
+    const details = stats.witel_details || {};
+
+    regions.forEach(region => {
+        region.onmouseenter = (e) => {
+            const witel = region.getAttribute('data-witel');
+            const data = details[witel] || { revenue: 0, products: 0 };
+            
+            tooltip.innerHTML = `
+                <h4>Witel ${witel}</h4>
+                <p><span>Revenue:</span> <strong class="tooltip-rev">${fmtCurrency(data.revenue)}</strong></p>
+                <p><span>Jumlah Produk:</span> <strong>${data.products}</strong></p>
+            `;
+            tooltip.style.display = 'block';
+            tooltip.style.opacity = '1';
+        };
+
+        region.onmousemove = (e) => {
+            const container = region.closest('.map-container');
+            const rect = container.getBoundingClientRect();
+            const x = e.clientX - rect.left + 15;
+            const y = e.clientY - rect.top + 15;
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y}px`;
+        };
+
+        region.onmouseleave = () => {
+            tooltip.style.display = 'none';
+            tooltip.style.opacity = '0';
+        };
+    });
+}
+
 function renderMonthlyChart(stats, mode) {
     destroyChart('monthly');
     const dataMap = mode === 'scaling' ? stats.monthly_scaling :
                     mode === 'sustain' ? stats.monthly_sustain : stats.monthly_all;
     const vals = MONTH_LABELS.map(m => (dataMap || {})[m] || 0);
-    // Harmonious red/pink palette per mode
     const colorMap = {
-        all:     { border: '#e63030', bg: 'rgba(230,48,48,0.18)' },
-        scaling: { border: '#ff4757', bg: 'rgba(255,71,87,0.15)' },
-        sustain: { border: '#ff8e8e', bg: 'rgba(255,142,142,0.12)' }
+        all:     { border: '#e63030', bg: 'rgba(230,48,48,0.15)' },
+        scaling: { border: '#ff4757', bg: 'rgba(255,71,87,0.12)' },
+        sustain: { border: '#ff8e8e', bg: 'rgba(255,142,142,0.10)' }
     };
     const c = colorMap[mode] || colorMap.all;
     const label = mode === 'all' ? 'All Revenue' : mode === 'scaling' ? 'Revenue Scaling' : 'Revenue Sustain';
     const ctx = document.getElementById('monthlyChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    const gradient = ctx.createLinearGradient(0, 0, 0, 250);
     gradient.addColorStop(0, c.bg); gradient.addColorStop(1, 'rgba(0,0,0,0)');
     charts.monthly = new Chart(ctx, {
         type: 'line',
-        data: { labels: MONTH_LABELS, datasets: [{ label, data: vals, borderColor: c.border, backgroundColor: gradient, fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: c.border, pointBorderColor: '#0f1117', pointBorderWidth: 2, borderWidth: 2 }] },
+        data: { labels: MONTH_LABELS, datasets: [{ label, data: vals, borderColor: c.border, backgroundColor: gradient, fill: true, tension: 0.4, pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: c.border, pointBorderColor: '#0f1117', pointBorderWidth: 1.5, borderWidth: 2 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },
             plugins: {
                 legend: { display: false },
-                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { size: 12, weight: 'bold' }, bodyFont: { size: 11 }, padding: 12, callbacks: { label: ctx => ` ${label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
+                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { family: 'Plus Jakarta Sans', size: 12, weight: 'bold' }, bodyFont: { family: 'Plus Jakarta Sans', size: 11 }, padding: 12, callbacks: { label: ctx => ` ${label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
             },
             scales: {
-                y: { beginAtZero: true, grid: { color: DARK_GRID }, ticks: { font: { size: 10 }, color: DARK_TICK, callback: v => 'Rp ' + (v/1e9).toFixed(1) + 'B' }, border: { display: false } },
-                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: DARK_TICK }, border: { display: false } }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { font: { family: 'Plus Jakarta Sans', size: 9, weight: '500' }, color: DARK_TICK, callback: v => 'Rp ' + (v/1e9).toFixed(1) + 'B' }, border: { display: false } },
+                x: { grid: { display: false }, ticks: { font: { family: 'Plus Jakarta Sans', size: 9, weight: '500' }, color: DARK_TICK }, border: { display: false } }
             }
         }
     });
@@ -390,7 +427,7 @@ function renderTop5Chart(stats, mode) {
                 mode === 'karakteristik' ? 'top_customers_karakteristik' :
                 mode === 'durasi' ? 'top_customers_durasi' : 'top_customers_revenue';
     const customers = (stats[key] || []).slice(0, 5);
-    const labels = customers.map(c => c.CUST_NAME.length > 32 ? c.CUST_NAME.substring(0, 32) + '…' : c.CUST_NAME);
+    const labels = customers.map(c => c.CUST_NAME.length > 25 ? c.CUST_NAME.substring(0, 25) + '…' : c.CUST_NAME);
     const vals = customers.map(c =>
         mode === 'produk' ? c.C1_Produk :
         mode === 'karakteristik' ? c.C2_Karakteristik :
@@ -398,28 +435,24 @@ function renderTop5Chart(stats, mode) {
 
     charts.top5 = new Chart(document.getElementById('topCustChart'), {
         type: 'bar',
-        data: { labels, datasets: [{ data: vals, backgroundColor: ['#e63030','#ff4757','#ff6b6b','#ff8e8e','#ffa8a8'].slice(0, vals.length), borderWidth: 0, borderRadius: 6, borderSkipped: false }] },
+        data: { labels, datasets: [{ data: vals, backgroundColor: ['#e63030','#ff4757','#ff6b6b','#ff8e8e','#ffa8a8'].slice(0, vals.length), borderWidth: 0, borderRadius: 5, borderSkipped: false }] },
         options: {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { size: 11, weight: 'bold' }, bodyFont: { size: 10 }, padding: 10,
+                tooltip: { backgroundColor: DARK_TOOLTIP_BG, titleFont: { family: 'Plus Jakarta Sans', size: 11, weight: 'bold' }, bodyFont: { family: 'Plus Jakarta Sans', size: 10 }, padding: 10,
                     callbacks: { label: ctx => { const v = ctx.raw; return mode === 'revenue' ? ` Rp ${(v/1e9).toFixed(2)}B` : mode === 'produk' ? ` ${v} produk` : mode === 'durasi' ? ` ${v} bulan` : ` ${Number(v).toFixed(4)}`; } }
                 }
             },
             scales: {
-                x: { beginAtZero: true, grid: { color: DARK_GRID }, ticks: { font: { size: 9 }, color: DARK_TICK, callback: v => mode === 'revenue' ? (v/1e9).toFixed(1)+'B' : v }, border: { display: false } },
-                y: { grid: { display: false }, ticks: { font: { size: 9, weight: '600' }, color: DARK_TICK }, border: { display: false } }
+                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { font: { family: 'Plus Jakarta Sans', size: 9 }, color: DARK_TICK, callback: v => mode === 'revenue' ? (v/1e9).toFixed(1)+'B' : v }, border: { display: false } },
+                y: { grid: { display: false }, ticks: { font: { family: 'Plus Jakarta Sans', size: 9, weight: '600' }, color: DARK_TICK }, border: { display: false } }
             }
         }
     });
 }
 
 function filterMonthly(mode, btn) {
-    document.querySelectorAll('.filter-tabs .ftab').forEach(b => {
-        if (b.closest('#tab-revenue .card:nth-child(3)') || b.parentElement.parentElement.querySelector('canvas#monthlyChart')) {}
-    });
-    // Find siblings of clicked button
     btn.closest('.filter-tabs').querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     if (statsCache) renderMonthlyChart(statsCache, mode);

@@ -9,19 +9,13 @@ import openpyxl
 from pathlib import Path
 from contextlib import asynccontextmanager
 import io
-import os
 import warnings
 warnings.filterwarnings('ignore')
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# Railway: data ada di folder data/ dalam project root
-DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(exist_ok=True)
-
-CSV_PATH = DATA_DIR / "PMS DSS NON POTS 2025_Master.csv"
-ORIGINAL_CSV = DATA_DIR / "PMS DSS NON POTS 2025.csv"
-TEMPLATE_EXCEL = DATA_DIR / "template_import_spk.xlsx"
+CSV_PATH = BASE_DIR.parent / "sistem" / "PMS DSS NON POTS 2025_Master.csv"
+ORIGINAL_CSV = BASE_DIR.parent / "sistem" / "PMS DSS NON POTS 2025.csv"
+TEMPLATE_EXCEL = BASE_DIR.parent / "sistem" / "template_import_spk.xlsx"
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
@@ -37,6 +31,7 @@ stats_data = {
     "monthly_all": {},
     "monthly_scaling": {},
     "monthly_sustain": {},
+    "witel_details": {},
 }
 
 MONTH_ORDER = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
@@ -61,6 +56,15 @@ def init_data():
             stats_data["witel_revenue"] = df_raw.groupby('WITEL_SHIP')['LOCAL_AMOUNT'].sum().sort_values(ascending=False).head(10).to_dict()
             stats_data["char_revenue"] = df_raw.groupby('CHARACTERISTICS')['LOCAL_AMOUNT'].sum().to_dict()
             stats_data["total_revenue"] = float(df_raw['LOCAL_AMOUNT'].sum())
+
+            # Detailed statistics for specific Witels on Kalimantan map
+            witel_details = {}
+            for w in ['KALBAR', 'KALSELTENG', 'KALTIMTARA', 'BALIKPAPAN']:
+                w_df = df_raw[df_raw['WITEL_SHIP'] == w]
+                rev = float(w_df['LOCAL_AMOUNT'].sum())
+                prod = int(w_df['GROUP4'].nunique()) if 'GROUP4' in w_df.columns else 0
+                witel_details[w] = {"revenue": rev, "products": prod}
+            stats_data["witel_details"] = witel_details
 
             # Monthly revenue breakdown
             df_raw['MONTH_KEY'] = df_raw['PERIODE'].astype(str).str[-2:]
@@ -158,7 +162,7 @@ class CustomerUpdate(BaseModel):
 # ---- ROUTES ----
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/api/stats")
 def get_stats():
@@ -184,11 +188,13 @@ def get_raw_transactions(limit: int = 50, offset: int = 0, search: Optional[str]
     if search:
         df_tmp = df_tmp[df_tmp['CUST_NAME'].astype(str).str.upper().str.contains(search.upper(), na=False)]
     total = len(df_tmp)
+    # Return key columns only for display
     display_cols = ['PERIODE', 'CUST_NAME', 'ACCOUNT_NUM', 'PRODUCT_GROUP', 'PRODUCT_NAME',
                     'LOCAL_AMOUNT', 'WITEL_SHIP', 'CHARACTERISTICS', 'GROUP4', 'SEGMENT_6_LNAME',
                     'DIVISI', 'PAYMENT_TYPE']
     available = [c for c in display_cols if c in df_tmp.columns]
     page_data = df_tmp[available].iloc[offset:offset+limit]
+    # Replace NaN with empty string for JSON serialization
     page_data = page_data.fillna('')
     return {"total": total, "data": page_data.to_dict(orient='records'), "columns": available}
 
@@ -264,6 +270,7 @@ def calculate_ahp_saw(req: MatrixRequest):
     cr = ci / ri if ri != 0 else 0
     is_consistent = cr <= 0.1
 
+    # Dynamic SAW: support n criteria mapped to available columns
     BASE_COLS = [
         ('C1_Produk', 0),
         ('C2_Karakteristik', 1),
@@ -307,6 +314,7 @@ async def import_excel(file: UploadFile = File(...)):
         contents = await file.read()
         df_import = pd.read_excel(io.BytesIO(contents), header=None)
 
+        # Auto-detect header row: cari baris yang mengandung 'CUST_NAME'
         header_row = None
         for i, row in df_import.iterrows():
             if any(str(v).strip().upper() == 'CUST_NAME' for v in row.values):
