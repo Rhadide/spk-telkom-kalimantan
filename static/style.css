@@ -264,6 +264,28 @@ button { font-family:inherit; }
     fill:#fff;
 }
 
+.map-bg-region {
+    fill:rgba(255,255,255,0.015);
+    stroke:rgba(255,255,255,0.05);
+    stroke-width:1.5;
+    pointer-events:none;
+}
+.map-bg-region.malaysia {
+    fill:rgba(255,255,255,0.018);
+}
+.map-bg-region.brunei {
+    fill:rgba(255,255,255,0.03);
+}
+.map-bg-label {
+    font-family:'Plus Jakarta Sans', sans-serif;
+    font-size:8px;
+    font-weight:700;
+    fill:rgba(255,255,255,0.22);
+    text-anchor:middle;
+    pointer-events:none;
+    letter-spacing:0.04em;
+}
+
 /* Interactive custom tooltip for map */
 .map-tooltip {
     position:absolute;
