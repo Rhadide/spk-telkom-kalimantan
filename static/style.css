@@ -168,7 +168,8 @@ button { font-family:inherit; }
 /* ===== REVENUE TAB — NO SCROLL LAYOUT ===== */
 #tab-revenue {
     display:none;
-    height:calc(100vh - var(--topbar-h) - 3rem);
+    height:calc(100vh - var(--topbar-h));
+    padding:1.5rem 1.75rem;
     flex-direction:column;
     gap:.75rem;
     overflow:hidden;
