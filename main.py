@@ -13,9 +13,14 @@ import warnings
 warnings.filterwarnings('ignore')
 
 BASE_DIR = Path(__file__).resolve().parent
-CSV_PATH = BASE_DIR.parent / "sistem" / "PMS DSS NON POTS 2025_Master.csv"
-ORIGINAL_CSV = BASE_DIR.parent / "sistem" / "PMS DSS NON POTS 2025.csv"
-TEMPLATE_EXCEL = BASE_DIR.parent / "sistem" / "template_import_spk.xlsx"
+if (BASE_DIR / "data").exists():
+    CSV_PATH = BASE_DIR / "data" / "PMS DSS NON POTS 2025_Master.csv"
+    ORIGINAL_CSV = BASE_DIR / "data" / "PMS DSS NON POTS 2025.csv"
+    TEMPLATE_EXCEL = BASE_DIR / "data" / "template_import_spk.xlsx"
+else:
+    CSV_PATH = BASE_DIR.parent / "sistem" / "PMS DSS NON POTS 2025_Master.csv"
+    ORIGINAL_CSV = BASE_DIR.parent / "sistem" / "PMS DSS NON POTS 2025.csv"
+    TEMPLATE_EXCEL = BASE_DIR.parent / "sistem" / "template_import_spk.xlsx"
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
