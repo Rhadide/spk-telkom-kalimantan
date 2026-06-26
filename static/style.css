@@ -242,7 +242,8 @@ button { font-family:inherit; }
     cursor:pointer;
     transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.map-region:hover {
+.map-region:hover,
+.map-region.witel-hovered {
     fill:rgba(230,48,48,0.22);
     stroke:var(--red);
     stroke-width:3.5;
@@ -260,7 +261,9 @@ button { font-family:inherit; }
     transition:fill 0.2s;
 }
 .map-region:hover + .map-label,
-.map-region:hover ~ .map-label[data-witel] {
+.map-region.witel-hovered + .map-label,
+.map-region:hover ~ .map-label[data-witel],
+.map-region.witel-hovered ~ .map-label[data-witel] {
     fill:#fff;
 }
 

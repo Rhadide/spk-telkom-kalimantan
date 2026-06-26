@@ -370,20 +370,53 @@ function initKalimantanMap(stats) {
             `;
             tooltip.style.display = 'block';
             tooltip.style.opacity = '1';
+
+            // Highlight all map paths for this Witel
+            document.querySelectorAll(`.map-region[data-witel="${witel}"]`).forEach(r => {
+                r.classList.add('witel-hovered');
+            });
         };
 
         region.onmousemove = (e) => {
             const container = region.closest('.map-container');
             const rect = container.getBoundingClientRect();
-            const x = e.clientX - rect.left + 15;
-            const y = e.clientY - rect.top + 15;
-            tooltip.style.left = `${x}px`;
-            tooltip.style.top = `${y}px`;
+            
+            // Mouse position relative to the container
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Tooltip size
+            const tooltipWidth = tooltip.offsetWidth || 180;
+            const tooltipHeight = tooltip.offsetHeight || 80;
+            
+            // Coordinate adjustments to prevent boundary overflow
+            let posX = mouseX + 15;
+            let posY = mouseY + 15;
+            
+            if (posX + tooltipWidth > rect.width) {
+                posX = mouseX - tooltipWidth - 15;
+            }
+            if (posY + tooltipHeight > rect.height) {
+                posY = mouseY - tooltipHeight - 15;
+            }
+            
+            // Keep tooltip within bounds (at least 0)
+            if (posX < 0) posX = 5;
+            if (posY < 0) posY = 5;
+
+            tooltip.style.left = `${posX}px`;
+            tooltip.style.top = `${posY}px`;
         };
 
         region.onmouseleave = () => {
             tooltip.style.display = 'none';
             tooltip.style.opacity = '0';
+
+            // Remove highlight class from all paths
+            const witel = region.getAttribute('data-witel');
+            document.querySelectorAll(`.map-region[data-witel="${witel}"]`).forEach(r => {
+                r.classList.remove('witel-hovered');
+            });
         };
     });
 }
