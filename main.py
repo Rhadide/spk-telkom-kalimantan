@@ -284,24 +284,24 @@ def add_customer(cust: CustomerAdd):
     recalculate_all_stats()
     return {"status": "success", "message": f"Pelanggan '{cust.CUST_NAME}' berhasil ditambahkan."}
 
-@app.put("/api/customers/{name}")
+@app.put("/api/customers/{name:path}")
 def update_customer(name: str, cust: CustomerUpdate):
     global agg_df, raw_df_cache
     from urllib.parse import unquote
-    name = unquote(name)
-    if name not in agg_df['CUST_NAME'].values:
+    name = unquote(name).strip()
+    if name not in agg_df['CUST_NAME'].astype(str).str.strip().values:
         raise HTTPException(status_code=404, detail="Pelanggan tidak ditemukan.")
     total_rev = cust.Rev_Scaling + cust.Rev_Sustain
     c2 = 1.0 if total_rev == 0 else max(1.0, min(2.0, (cust.Rev_Scaling / total_rev * 2) + (cust.Rev_Sustain / total_rev * 1)))
-    agg_df.loc[agg_df['CUST_NAME'] == name, 'C1_Produk'] = cust.C1_Produk
-    agg_df.loc[agg_df['CUST_NAME'] == name, 'C2_Karakteristik'] = round(c2, 4)
-    agg_df.loc[agg_df['CUST_NAME'] == name, 'C3_Durasi'] = cust.C3_Durasi
-    agg_df.loc[agg_df['CUST_NAME'] == name, 'C4_Revenue'] = total_rev
+    agg_df.loc[agg_df['CUST_NAME'].astype(str).str.strip() == name, 'C1_Produk'] = cust.C1_Produk
+    agg_df.loc[agg_df['CUST_NAME'].astype(str).str.strip() == name, 'C2_Karakteristik'] = round(c2, 4)
+    agg_df.loc[agg_df['CUST_NAME'].astype(str).str.strip() == name, 'C3_Durasi'] = cust.C3_Durasi
+    agg_df.loc[agg_df['CUST_NAME'].astype(str).str.strip() == name, 'C4_Revenue'] = total_rev
     agg_df.to_csv(CSV_PATH, index=False)
 
     # Scale/update customer transactions in raw_df_cache
     if raw_df_cache is not None:
-        cust_rows = raw_df_cache['CUST_NAME'].astype(str).str.strip() == name.strip()
+        cust_rows = raw_df_cache['CUST_NAME'].astype(str).str.strip() == name
         if cust_rows.any():
             old_sum = raw_df_cache.loc[cust_rows, 'LOCAL_AMOUNT'].sum()
             if old_sum > 0:
@@ -317,7 +317,7 @@ def update_customer(name: str, cust: CustomerUpdate):
             # If not in raw, add a default transaction
             new_tx = pd.DataFrame([{
                 'PERIODE': 202501,
-                'CUST_NAME': name.strip(),
+                'CUST_NAME': name,
                 'LOCAL_AMOUNT': total_rev,
                 'WITEL_SHIP': 'BALIKPAPAN',
                 'CHARACTERISTICS': 'SCALING' if cust.Rev_Scaling >= cust.Rev_Sustain else 'SUSTAIN',
@@ -334,17 +334,17 @@ def update_customer(name: str, cust: CustomerUpdate):
     recalculate_all_stats()
     return {"status": "success"}
 
-@app.delete("/api/customers/{name}")
+@app.delete("/api/customers/{name:path}")
 def delete_customer(name: str):
     global agg_df, raw_df_cache
     from urllib.parse import unquote
-    name = unquote(name)
-    agg_df = agg_df[agg_df['CUST_NAME'] != name]
+    name = unquote(name).strip()
+    agg_df = agg_df[agg_df['CUST_NAME'].astype(str).str.strip() != name]
     agg_df.to_csv(CSV_PATH, index=False)
 
     # Remove customer transactions from raw_df_cache
     if raw_df_cache is not None:
-        raw_df_cache = raw_df_cache[raw_df_cache['CUST_NAME'].astype(str).str.strip() != name.strip()]
+        raw_df_cache = raw_df_cache[raw_df_cache['CUST_NAME'].astype(str).str.strip() != name]
         try:
             raw_df_cache.to_csv(ORIGINAL_CSV, sep=';', index=False)
         except Exception as e:

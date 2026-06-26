@@ -589,7 +589,14 @@ function renderPagination(containerId, currentPage, total, pageSize, callback) {
 async function deleteCust(name) {
     if (!confirm(`Hapus pelanggan "${name}"?`)) return;
     const res = await fetch(`/api/customers/${encodeURIComponent(name)}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Pelanggan berhasil dihapus.', 'success'); loadMasterEdited(); }
+    if (res.ok) {
+        showToast('Pelanggan berhasil dihapus.', 'success');
+        await loadDashboard();
+        loadMasterEdited();
+        if (typeof loadRevenueStats === 'function') {
+            await loadRevenueStats(true);
+        }
+    }
     else showToast('Gagal menghapus.', 'error');
 }
 
