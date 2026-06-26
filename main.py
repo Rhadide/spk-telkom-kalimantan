@@ -46,6 +46,23 @@ MONTH_MAP = {
     "07":"Jul","08":"Agu","09":"Sep","10":"Okt","11":"Nov","12":"Des"
 }
 
+def update_top_customers_stats():
+    global agg_df, stats_data
+    if agg_df is not None and not agg_df.empty:
+        try:
+            available_cols = ['CUST_NAME', 'C4_Revenue', 'C1_Produk', 'C2_Karakteristik', 'C3_Durasi']
+            stats_data["top_customers_revenue"] = agg_df.nlargest(5, 'C4_Revenue')[available_cols].to_dict(orient='records')
+            stats_data["top_customers_produk"] = agg_df.nlargest(5, 'C1_Produk')[available_cols].to_dict(orient='records')
+            stats_data["top_customers_durasi"] = agg_df.nlargest(5, 'C3_Durasi')[available_cols].to_dict(orient='records')
+            stats_data["top_customers_karakteristik"] = agg_df.nlargest(5, 'C2_Karakteristik')[available_cols].to_dict(orient='records')
+        except Exception as e:
+            print(f"Error updating top customers stats: {e}")
+    else:
+        stats_data["top_customers_revenue"] = []
+        stats_data["top_customers_produk"] = []
+        stats_data["top_customers_durasi"] = []
+        stats_data["top_customers_karakteristik"] = []
+
 def init_data():
     global agg_df, raw_df_cache, stats_data
 
@@ -130,14 +147,11 @@ def init_data():
     try:
         agg_df = pd.read_csv(CSV_PATH)
         print(f"Master loaded: {len(agg_df)} customers.")
-        # Top 5 per filter
-        stats_data["top_customers_revenue"] = agg_df.nlargest(5, 'C4_Revenue')[['CUST_NAME', 'C4_Revenue', 'C1_Produk', 'C2_Karakteristik', 'C3_Durasi']].to_dict(orient='records')
-        stats_data["top_customers_produk"] = agg_df.nlargest(5, 'C1_Produk')[['CUST_NAME', 'C4_Revenue', 'C1_Produk', 'C2_Karakteristik', 'C3_Durasi']].to_dict(orient='records')
-        stats_data["top_customers_durasi"] = agg_df.nlargest(5, 'C3_Durasi')[['CUST_NAME', 'C4_Revenue', 'C1_Produk', 'C2_Karakteristik', 'C3_Durasi']].to_dict(orient='records')
-        stats_data["top_customers_karakteristik"] = agg_df.nlargest(5, 'C2_Karakteristik')[['CUST_NAME', 'C4_Revenue', 'C1_Produk', 'C2_Karakteristik', 'C3_Durasi']].to_dict(orient='records')
+        update_top_customers_stats()
     except Exception as e:
         print(f"Error loading Master CSV: {e}")
         agg_df = pd.DataFrame(columns=['CUST_NAME', 'C1_Produk', 'C2_Karakteristik', 'C3_Durasi', 'C4_Revenue'])
+        update_top_customers_stats()
 
 
 @asynccontextmanager
@@ -226,6 +240,7 @@ def add_customer(cust: CustomerAdd):
     }])
     agg_df = pd.concat([agg_df, new_row], ignore_index=True)
     agg_df.to_csv(CSV_PATH, index=False)
+    update_top_customers_stats()
     return {"status": "success", "message": f"Pelanggan '{cust.CUST_NAME}' berhasil ditambahkan."}
 
 @app.put("/api/customers/{name}")
@@ -242,6 +257,7 @@ def update_customer(name: str, cust: CustomerUpdate):
     agg_df.loc[agg_df['CUST_NAME'] == name, 'C3_Durasi'] = cust.C3_Durasi
     agg_df.loc[agg_df['CUST_NAME'] == name, 'C4_Revenue'] = total_rev
     agg_df.to_csv(CSV_PATH, index=False)
+    update_top_customers_stats()
     return {"status": "success"}
 
 @app.delete("/api/customers/{name}")
@@ -251,6 +267,7 @@ def delete_customer(name: str):
     name = unquote(name)
     agg_df = agg_df[agg_df['CUST_NAME'] != name]
     agg_df.to_csv(CSV_PATH, index=False)
+    update_top_customers_stats()
     return {"status": "success"}
 
 @app.post("/api/calculate")
@@ -377,6 +394,7 @@ async def import_excel(file: UploadFile = File(...)):
 
         if added > 0:
             agg_df.to_csv(CSV_PATH, index=False)
+            update_top_customers_stats()
 
         return {"status": "success", "added": added, "skipped": skipped,
                 "message": f"{added} pelanggan berhasil diimpor, {skipped} dilewati (duplikat/error)."}
