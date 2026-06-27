@@ -305,23 +305,26 @@ function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete chart
 const centerTextPlugin = {
     id: 'centerText',
     beforeDraw(chart) {
-        const { width, height, ctx } = chart;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
         ctx.restore();
         ctx.font = "bold 13px 'Plus Jakarta Sans'";
-        ctx.textBaseline = "middle";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillStyle = "#ffffff";
+        
         const totalVal = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
         const text = "Rp " + (totalVal/1e9).toFixed(1) + "B";
-        const textX = Math.round((width - ctx.measureText(text).width) / 2);
-        const textY = (height / 2) - 8;
-        ctx.fillText(text, textX, textY);
+        
+        const centerX = (chartArea.left + chartArea.right) / 2;
+        const centerY = (chartArea.top + chartArea.bottom) / 2;
+        
+        ctx.fillText(text, centerX, centerY - 8);
 
         ctx.font = "600 9px 'Plus Jakarta Sans'";
         ctx.fillStyle = "#64748b";
         const subtext = "TOTAL";
-        const subtextX = Math.round((width - ctx.measureText(subtext).width) / 2);
-        const subtextY = (height / 2) + 10;
-        ctx.fillText(subtext, subtextX, subtextY);
+        ctx.fillText(subtext, centerX, centerY + 8);
         ctx.save();
     }
 };
@@ -340,7 +343,7 @@ function renderRevenueCharts(stats) {
         options: {
             responsive: true, maintainAspectRatio: false, cutout: '72%',
             plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 9, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, pointStyleWidth: 7, padding: 8, color: DARK_TICK } },
+                legend: { position: 'bottom', labels: { font: { size: 9, family: 'Plus Jakarta Sans', weight: '600' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 8, color: DARK_TICK } },
                 tooltip: { backgroundColor: DARK_TOOLTIP_BG, padding: 12, callbacks: { label: ctx => ` ${ctx.label}: Rp ${(ctx.raw/1e9).toFixed(2)}B` } }
             }
         }
